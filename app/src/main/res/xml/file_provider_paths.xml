@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Camera photos captured in cache -->
+    <cache-path name="camera_photos" path="plant_photos/" />
+    <!-- Export files -->
+    <files-path name="export_files" path="export/" />
+    <!-- External files for sharing -->
+    <external-files-path name="external_files" path="." />
+</paths>

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Verdy</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_plants">Plantas</string>
+    <string name="nav_calendar">Calendario</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_greeting">Hola jardi</string>
+    <string name="dashboard_today_pending">Pendientes hoy</string>
+    <string name="dashboard_upcoming">Próximos cuidados</string>
+    <string name="dashboard_no_pending">Todo al día 🎉</string>
+    <string name="dashboard_no_plants">Aún no tienes plantas.\nAgrega tu primera planta.</string>
+    <string name="dashboard_total_plants">%d plantas en total</string>
+    <string name="dashboard_pending_count">Hoy tienes %d pendiente(s)</string>
+
+    <!-- Plant status -->
+    <string name="status_healthy">Saludable</string>
+    <string name="status_needs_attention">Necesita atención</string>
+    <string name="status_recovering">En recuperación</string>
+
+    <!-- Sun exposure -->
+    <string name="sun_low">Interior</string>
+    <string name="sun_medium">Semisombra</string>
+    <string name="sun_high">Exterior</string>
+
+    <!-- Reminder types -->
+    <string name="reminder_watering">Riego</string>
+    <string name="reminder_fertilizing">Abono</string>
+    <string name="reminder_repotting">Trasplante</string>
+    <string name="reminder_pruning">Poda</string>
+    <string name="reminder_custom">Otro cuidado</string>
+
+    <!-- Reminder frequency -->
+    <string name="freq_once">Una vez</string>
+    <string name="freq_daily">Diaria</string>
+    <string name="freq_weekly">Semanal</string>
+    <string name="freq_every_x_days">Cada %d días</string>
+    <string name="freq_monthly">Mensual</string>
+
+    <!-- Maintenance actions -->
+    <string name="action_done">Realizado</string>
+    <string name="action_postpone">Posponer</string>
+    <string name="action_ignore">Ignorar</string>
+
+    <!-- Plant form -->
+    <string name="plant_form_add_title">Nueva planta</string>
+    <string name="plant_form_edit_title">Editar planta</string>
+    <string name="plant_custom_name">Nombre personalizado</string>
+    <string name="plant_common_name">Nombre común</string>
+    <string name="plant_scientific_name">Nombre científico (opcional)</string>
+    <string name="plant_location">Ubicación (salón, jardín, balcón…)</string>
+    <string name="plant_notes">Notas personales</string>
+    <string name="plant_acquisition_date">Fecha de adquisición</string>
+    <string name="plant_watering_frequency">Frecuencia de riego (días)</string>
+    <string name="plant_fertilizing_frequency">Frecuencia de abono (días)</string>
+    <string name="plant_fertilizer_type">Tipo de abono</string>
+    <string name="plant_water_amount">Cantidad de agua (ml)</string>
+    <string name="plant_sun_exposure">Exposición solar</string>
+    <string name="plant_status">Estado</string>
+    <string name="plant_add_photo">Agregar foto</string>
+    <string name="plant_change_photo">Cambiar foto</string>
+    <string name="plant_save">Guardar planta</string>
+    <string name="plant_saved">Planta guardada</string>
+    <string name="plant_deleted">Planta eliminada</string>
+    <string name="plant_delete_confirm">¿Eliminar esta planta?</string>
+    <string name="plant_delete_confirm_detail">Se eliminarán también todos los recordatorios e historial.</string>
+
+    <!-- Plant detail -->
+    <string name="plant_detail_care_info">Información de cuidados</string>
+    <string name="plant_detail_watering">Riego cada %d días</string>
+    <string name="plant_detail_last_watering">Último riego</string>
+    <string name="plant_detail_next_watering">Próximo riego</string>
+    <string name="plant_detail_last_fertilizing">Último abono</string>
+    <string name="plant_detail_next_fertilizing">Próximo abono</string>
+    <string name="plant_detail_history">Historial</string>
+    <string name="plant_detail_reminders">Recordatorios</string>
+    <string name="plant_detail_no_history">Sin historial todavía</string>
+    <string name="plant_detail_no_reminders">Sin recordatorios</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_reminders">Recordatorios de plantas</string>
+    <string name="notification_channel_reminders_desc">Notificaciones de cuidado de tus plantas</string>
+    <string name="notification_watering_title">%s necesita agua</string>
+    <string name="notification_watering_body">Es momento de regar tu %s</string>
+    <string name="notification_fertilizing_title">%s necesita abono</string>
+    <string name="notification_fertilizing_body">Es momento de abonar tu %s</string>
+    <string name="notification_reminder_title">Cuidado pendiente: %s</string>
+    <string name="notification_reminder_body">Tu planta %s necesita: %s</string>
+
+    <!-- About -->
+    <string name="about_free">Gratuita y de código abierto</string>
+    <string name="about_license">Licencia GNU GPL v3</string>
+    <string name="about_repo">Código fuente en GitHub</string>
+    <string name="about_repo_url">https://github.com/SebastianCanoRuiz/verdy</string>
+
+    <!-- Backup -->
+    <string name="backup_title">Backup automático</string>
+    <string name="backup_last">Último backup: %s</string>
+    <string name="backup_never">Sin backups aún</string>
+    <string name="backup_now">Hacer backup ahora</string>
+    <string name="backup_success">Backup guardado correctamente</string>
+    <string name="backup_error">Error al crear el backup</string>
+    <string name="backup_desc">Se guardan los últimos 7 backups en almacenamiento interno</string>
+
+    <!-- QR from image -->
+    <string name="import_qr_from_image">QR desde imagen</string>
+    <string name="import_qr_no_found">No se encontró un código QR en la imagen</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_export">Exportar datos</string>
+    <string name="settings_export_desc">Guarda tus plantas y cuidados en un archivo</string>
+    <string name="settings_export_zip">Exportar como archivo ZIP</string>
+    <string name="settings_export_qr">Generar código QR</string>
+    <string name="settings_import">Importar datos</string>
+    <string name="settings_import_desc">Restaura tus datos desde otro dispositivo</string>
+    <string name="settings_import_file">Importar desde archivo</string>
+    <string name="settings_import_qr">Escanear código QR</string>
+    <string name="settings_about">Acerca de Verdy</string>
+    <string name="settings_version">Versión %s</string>
+    <string name="settings_export_success">Datos exportados correctamente</string>
+    <string name="settings_import_success">Datos importados correctamente</string>
+    <string name="settings_import_error">Error al importar los datos</string>
+    <string name="settings_qr_too_large">Demasiados datos para un QR.\nUsa la exportación ZIP.</string>
+
+    <!-- Common -->
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Eliminar</string>
+    <string name="edit">Editar</string>
+    <string name="save">Guardar</string>
+    <string name="loading">Cargando…</string>
+    <string name="error_generic">Algo salió mal. Inténtalo de nuevo.</string>
+    <string name="today">Hoy</string>
+    <string name="tomorrow">Mañana</string>
+    <string name="yesterday">Ayer</string>
+    <string name="days_ago">hace %d días</string>
+    <string name="in_days">en %d días</string>
+    <string name="never">Nunca</string>
+    <string name="photo_source_camera">Cámara</string>
+    <string name="photo_source_gallery">Galería</string>
+</resources>
