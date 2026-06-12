@@ -187,6 +187,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun listBackups(): List<java.io.File> = gardenFileManager.listBackups()
+
+    fun importFromBackupFile(file: java.io.File) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isImporting = true) }
+            gardenFileManager.importFromBackupFile(file).fold(
+                onSuccess = { data -> _uiState.update { it.copy(isImporting = false, importPreview = data) } },
+                onFailure = { e -> _uiState.update { it.copy(isImporting = false, error = e.message) } }
+            )
+        }
+    }
+
     fun clearQr() = _uiState.update { it.copy(qrBitmap = null) }
     fun clearSuccess() = _uiState.update { it.copy(successMessage = null, exportedFileUri = null) }
     fun clearError() = _uiState.update { it.copy(error = null, qrTooLarge = false) }

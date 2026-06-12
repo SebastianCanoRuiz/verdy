@@ -1,5 +1,6 @@
 package com.verdy.presentation.screen.plants.form
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,12 +56,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.verdy.R
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.SunExposure
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -72,6 +75,7 @@ fun PlantFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     LaunchedEffect(editPlantId) {
         editPlantId?.let { viewModel.loadPlant(it) }
@@ -87,7 +91,13 @@ fun PlantFormScreen(
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> viewModel.onPhotoUriChange(uri?.toString()) }
+    ) { uri: Uri? ->
+        uri?.let {
+            // Copy to internal storage to avoid losing access to the content URI after restart
+            val savedPath = copyPhotoToInternal(context, it)
+            viewModel.onPhotoUriChange(savedPath)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -385,3 +395,20 @@ private fun SectionHeader(text: String) {
         color = MaterialTheme.colorScheme.primary
     )
 }
+
+/**
+ * Copies an image from a content URI to the app's internal photos directory.
+ * Returns the absolute path of the saved file, or null on error.
+ *
+ * Using internal storage avoids the issue where content URIs become invalid
+ * after app restart (the system revokes temporary read permissions).
+ */
+private fun copyPhotoToInternal(context: Context, sourceUri: Uri): String? =
+    runCatching {
+        val dir = File(context.filesDir, "photos").also { it.mkdirs() }
+        val dest = File(dir, "plant_${System.currentTimeMillis()}.jpg")
+        context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+            dest.outputStream().use { out -> inp.copyTo(out) }
+        }
+        dest.absolutePath
+    }.getOrNull()

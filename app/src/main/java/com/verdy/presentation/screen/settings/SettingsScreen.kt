@@ -47,7 +47,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -283,6 +285,53 @@ fun SettingsScreen(
 
             // Backup section
             item {
+                var showRestoreDialog by remember { mutableStateOf(false) }
+
+                if (showRestoreDialog) {
+                    val backups = remember { viewModel.listBackups() }
+                    AlertDialog(
+                        onDismissRequest = { showRestoreDialog = false },
+                        title = { Text("Restaurar backup") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (backups.isEmpty()) {
+                                    Text(
+                                        "No hay backups disponibles todavía.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        "Selecciona un backup para restaurar:",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    backups.forEach { file ->
+                                        val label = file.name
+                                            .removePrefix("verdy_backup_")
+                                            .removeSuffix(".zip")
+                                        OutlinedButton(
+                                            onClick = {
+                                                showRestoreDialog = false
+                                                viewModel.importFromBackupFile(file)
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text(label, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showRestoreDialog = false }) { Text("Cerrar") }
+                        }
+                    )
+                }
+
                 SettingsSectionCard(title = stringResource(R.string.backup_title)) {
                     Text(
                         stringResource(R.string.backup_desc),
@@ -290,30 +339,31 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = lastBackupDate?.let { dateStr ->
+                            runCatching {
+                                val date = LocalDate.parse(dateStr)
+                                val daysAgo = ChronoUnit.DAYS.between(date, LocalDate.now())
+                                when (daysAgo) {
+                                    0L -> "Último backup: hoy"
+                                    1L -> "Último backup: ayer"
+                                    else -> "Último backup: hace $daysAgo días"
+                                }
+                            }.getOrDefault("Último backup: $dateStr")
+                        } ?: stringResource(R.string.backup_never),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = lastBackupDate?.let { dateStr ->
-                                runCatching {
-                                    val date = LocalDate.parse(dateStr)
-                                    val daysAgo = ChronoUnit.DAYS.between(date, LocalDate.now())
-                                    when (daysAgo) {
-                                        0L -> "Último backup: hoy"
-                                        1L -> "Último backup: ayer"
-                                        else -> "Último backup: hace $daysAgo días"
-                                    }
-                                }.getOrDefault("Último backup: $dateStr")
-                            } ?: stringResource(R.string.backup_never),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                         OutlinedButton(
                             onClick = viewModel::triggerManualBackup,
                             enabled = !uiState.isBackingUp,
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
                             if (uiState.isBackingUp) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -322,6 +372,16 @@ fun SettingsScreen(
                                 Spacer(Modifier.size(4.dp))
                                 Text(stringResource(R.string.backup_now), style = MaterialTheme.typography.labelMedium)
                             }
+                        }
+                        OutlinedButton(
+                            onClick = { showRestoreDialog = true },
+                            enabled = !uiState.isImporting,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Outlined.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.size(4.dp))
+                            Text("Restaurar", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

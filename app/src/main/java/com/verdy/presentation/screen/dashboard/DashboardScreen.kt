@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verdy.R
+import com.verdy.domain.model.enums.ReminderType
 import com.verdy.presentation.component.EmptyState
 import com.verdy.presentation.component.ReminderCard
 import kotlinx.coroutines.launch
@@ -334,7 +335,13 @@ private fun UpcomingReminderRow(item: PlantReminderItem, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = item.plant.customName, style = MaterialTheme.typography.titleSmall)
                 Text(
-                    text = item.reminder.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = when (item.reminder.type) {
+                        ReminderType.WATERING -> "Riego"
+                        ReminderType.FERTILIZING -> "Abono"
+                        ReminderType.REPOTTING -> "Trasplante"
+                        ReminderType.PRUNING -> "Poda"
+                        ReminderType.CUSTOM -> item.reminder.customLabel ?: "Cuidado personalizado"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
