@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Base theme for a pure Compose app.
+        Uses the Android platform Material theme (API 21+) with no action bar.
+        Jetpack Compose handles all actual theming via VerdyTheme.
+    -->
+    <style name="Theme.Verdy" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Splash screen theme — requires androidx.core:core-splashscreen -->
+    <style name="Theme.Verdy.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.Verdy</item>
+    </style>
+</resources>
