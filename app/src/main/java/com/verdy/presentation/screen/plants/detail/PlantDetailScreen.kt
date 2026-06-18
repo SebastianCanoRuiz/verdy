@@ -35,8 +35,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -303,6 +305,14 @@ fun PlantDetailScreen(
                 }
             }
 
+            // Curiosities section
+            item {
+                CuriositiesSection(
+                    curiosities = uiState.curiosities,
+                    isLoading = uiState.loadingCuriosities
+                )
+            }
+
             // History section
             item {
                 Text(
@@ -330,6 +340,63 @@ fun PlantDetailScreen(
 
             item { Spacer(Modifier.height(80.dp)) }
         }
+    }
+}
+
+@Composable
+private fun CuriositiesSection(
+    curiosities: String?,
+    isLoading: Boolean
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "✨ Curiosidades",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        when {
+            isLoading -> {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Text(
+                        "Consultando IA...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            curiosities != null -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(
+                        text = curiosities,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+            else -> {
+                Text(
+                    "Configura tu API key de OpenAI en local.properties para ver curiosidades.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
     }
 }
 
@@ -376,6 +443,7 @@ private fun HistoryRow(log: MaintenanceLog) {
             ReminderType.FERTILIZING -> "🌱"
             ReminderType.REPOTTING -> "🪴"
             ReminderType.PRUNING -> "✂️"
+            ReminderType.WATER_CHANGE -> "🫧"
             ReminderType.CUSTOM -> "✅"
         }
         MaintenanceAction.POSTPONED -> "⏰"
@@ -388,6 +456,7 @@ private fun HistoryRow(log: MaintenanceLog) {
             ReminderType.FERTILIZING -> "Abono aplicado"
             ReminderType.REPOTTING -> "Trasplante realizado"
             ReminderType.PRUNING -> "Poda realizada"
+            ReminderType.WATER_CHANGE -> "Cambio de agua realizado"
             ReminderType.CUSTOM -> log.notes ?: "Cuidado realizado"
         }
         MaintenanceAction.POSTPONED -> "Pospuesto"

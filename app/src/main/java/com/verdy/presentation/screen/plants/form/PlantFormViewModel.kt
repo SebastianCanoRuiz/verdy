@@ -7,10 +7,13 @@ import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.Plant
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.ReminderFrequency
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
+import com.verdy.domain.usecase.ai.IdentifyPlantUseCase
 import com.verdy.domain.usecase.plant.AddPlantUseCase
+import com.verdy.presentation.screen.dashboard.IdentificationStore
 import com.verdy.domain.usecase.plant.GetPlantByIdUseCase
 import com.verdy.domain.usecase.plant.UpdatePlantUseCase
 import com.verdy.domain.usecase.reminder.AddReminderUseCase
@@ -36,10 +39,14 @@ data class PlantFormUiState(
     val fertilizerType: String = "",
     val waterAmountMl: String = "",
     val sunExposure: SunExposure = SunExposure.SEMI_SHADE,
+    val medium: PlantMedium = PlantMedium.SOIL,
+    val waterChangeFrequencyDays: String = "7",
     val autoCreateWateringReminder: Boolean = true,
     val autoCreateFertilizingReminder: Boolean = true,
+    val autoCreateWaterChangeReminder: Boolean = true,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isIdentifying: Boolean = false,
     val savedSuccessfully: Boolean = false,
     val error: String? = null,
     val isEditMode: Boolean = false
@@ -51,13 +58,32 @@ class PlantFormViewModel @Inject constructor(
     private val updatePlant: UpdatePlantUseCase,
     private val getPlantById: GetPlantByIdUseCase,
     private val addReminder: AddReminderUseCase,
-    private val workManagerScheduler: WorkManagerScheduler
+    private val workManagerScheduler: WorkManagerScheduler,
+    private val identifyPlant: IdentifyPlantUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlantFormUiState())
     val uiState: StateFlow<PlantFormUiState> = _uiState
 
     private var editPlantId: Long? = null
+
+    init {
+        // Pre-fill form if an identification result is waiting
+        IdentificationStore.consume()?.let { result ->
+            _uiState.update { state ->
+                state.copy(
+                    commonName = result.commonName,
+                    scientificName = result.scientificName,
+                    sunExposure = result.sunExposure,
+                    wateringFrequencyDays = result.wateringFrequencyDays.toString(),
+                    notes = buildString {
+                        if (result.curiosities.isNotBlank()) append(result.curiosities)
+                        if (result.regions.isNotBlank()) append("\n\nRegiones: ${result.regions}")
+                    }
+                )
+            }
+        }
+    }
 
     fun loadPlant(plantId: Long) {
         if (plantId <= 0) return
@@ -81,6 +107,8 @@ class PlantFormViewModel @Inject constructor(
                         fertilizerType = plant.careInfo.fertilizerType ?: "",
                         waterAmountMl = plant.careInfo.waterAmountMl?.toString() ?: "",
                         sunExposure = plant.careInfo.sunExposure,
+                        medium = plant.careInfo.medium,
+                        waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays?.toString() ?: "7",
                         isLoading = false,
                         isEditMode = true
                     )
@@ -104,8 +132,11 @@ class PlantFormViewModel @Inject constructor(
     fun onFertilizerTypeChange(value: String) = _uiState.update { it.copy(fertilizerType = value) }
     fun onWaterAmountChange(value: String) = _uiState.update { it.copy(waterAmountMl = value) }
     fun onSunExposureChange(value: SunExposure) = _uiState.update { it.copy(sunExposure = value) }
+    fun onMediumChange(value: PlantMedium) = _uiState.update { it.copy(medium = value) }
+    fun onWaterChangeFrequencyChange(value: String) = _uiState.update { it.copy(waterChangeFrequencyDays = value) }
     fun onAutoWateringReminderChange(value: Boolean) = _uiState.update { it.copy(autoCreateWateringReminder = value) }
     fun onAutoFertilizingReminderChange(value: Boolean) = _uiState.update { it.copy(autoCreateFertilizingReminder = value) }
+    fun onAutoWaterChangeReminderChange(value: Boolean) = _uiState.update { it.copy(autoCreateWaterChangeReminder = value) }
 
     fun save() {
         val state = _uiState.value
@@ -126,7 +157,10 @@ class PlantFormViewModel @Inject constructor(
                     fertilizingFrequencyDays = state.fertilizingFrequencyDays.toIntOrNull(),
                     fertilizerType = state.fertilizerType.trim().takeIf { it.isNotBlank() },
                     waterAmountMl = state.waterAmountMl.toIntOrNull(),
-                    sunExposure = state.sunExposure
+                    sunExposure = state.sunExposure,
+                    medium = state.medium,
+                    waterChangeFrequencyDays = if (state.medium == PlantMedium.WATER)
+                        state.waterChangeFrequencyDays.toIntOrNull() else null
                 )
             )
 
@@ -144,6 +178,34 @@ class PlantFormViewModel @Inject constructor(
                     onFailure = { e -> _uiState.update { it.copy(isSaving = false, error = e.message) } }
                 )
             }
+        }
+    }
+
+    fun identifyFromPhoto(imagePath: String) {
+        if (imagePath.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isIdentifying = true, error = null) }
+            identifyPlant(imagePath).fold(
+                onSuccess = { result ->
+                    _uiState.update { state ->
+                        state.copy(
+                            commonName = result.commonName,
+                            scientificName = result.scientificName,
+                            sunExposure = result.sunExposure,
+                            wateringFrequencyDays = result.wateringFrequencyDays.toString(),
+                            notes = buildString {
+                                if (state.notes.isNotBlank()) append(state.notes).append("\n\n")
+                                if (result.curiosities.isNotBlank()) append(result.curiosities)
+                                if (result.regions.isNotBlank()) append("\n\nRegiones: ${result.regions}")
+                            },
+                            isIdentifying = false
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(isIdentifying = false, error = "Error al identificar: ${e.message}") }
+                }
+            )
         }
     }
 
@@ -171,6 +233,21 @@ class PlantFormViewModel @Inject constructor(
             )
             addReminder(reminder).getOrNull()?.let { id ->
                 workManagerScheduler.schedule(reminder.copy(id = id))
+            }
+        }
+
+        if (state.medium == PlantMedium.WATER) {
+            val waterChangeDays = state.waterChangeFrequencyDays.toIntOrNull() ?: 0
+            if (state.autoCreateWaterChangeReminder && waterChangeDays > 0) {
+                val reminder = Reminder(
+                    plantId = plantId,
+                    type = ReminderType.WATER_CHANGE,
+                    startDate = LocalDate.now(),
+                    frequency = ReminderFrequency.EveryXDays(waterChangeDays)
+                )
+                addReminder(reminder).getOrNull()?.let { id ->
+                    workManagerScheduler.schedule(reminder.copy(id = id))
+                }
             }
         }
     }

@@ -1,5 +1,9 @@
 package com.verdy.presentation.screen.dashboard
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,19 +20,29 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Grass
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -43,18 +57,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verdy.R
+import com.verdy.domain.model.PlantIdentificationResult
 import com.verdy.domain.model.enums.ReminderType
+import com.verdy.domain.model.enums.SunExposure
+import com.verdy.domain.util.MoonPhase
 import com.verdy.presentation.component.EmptyState
 import com.verdy.presentation.component.ReminderCard
+import com.verdy.presentation.screen.dashboard.IdentificationStore
 import kotlinx.coroutines.launch
 
-private enum class FabMenuStep { NONE, MAIN, PLANT_SELECTOR }
+private enum class FabMenuStep { NONE, MAIN, PLANT_SELECTOR, IDENTIFY_SOURCE, IDENTIFY_RESULT }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,16 +83,51 @@ fun DashboardScreen(
     onPlantClick: (Long) -> Unit,
     onAddPlant: () -> Unit,
     onAddReminder: (Long) -> Unit = {},
+    onAddPlantFromIdentification: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var fabMenuStep by remember { mutableStateOf(FabMenuStep.NONE) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
+    var pendingCameraUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            fabMenuStep = FabMenuStep.IDENTIFY_RESULT
+            viewModel.identifyPlant(it, context)
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            pendingCameraUri?.let { uri ->
+                fabMenuStep = FabMenuStep.IDENTIFY_RESULT
+                viewModel.identifyPlant(uri, context)
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createIdentifyCameraUri(context)
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+
     fun closeSheet() {
         scope.launch { sheetState.hide() }.invokeOnCompletion {
             fabMenuStep = FabMenuStep.NONE
+            viewModel.clearIdentificationResult()
         }
     }
 
@@ -122,6 +178,11 @@ fun DashboardScreen(
         ) {
             item {
                 SummaryCard(totalPlants = uiState.totalPlants, todayCount = uiState.todayItems.size)
+                Spacer(Modifier.height(8.dp))
+            }
+
+            item {
+                MoonPhaseCard(moonPhase = uiState.moonPhase)
                 Spacer(Modifier.height(8.dp))
             }
 
@@ -214,6 +275,22 @@ fun DashboardScreen(
                             onClick = { fabMenuStep = FabMenuStep.PLANT_SELECTOR },
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                            label = {
+                                Column {
+                                    Text("Identificar planta")
+                                    Text(
+                                        "Usa la IA para identificar una planta",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            selected = false,
+                            onClick = { fabMenuStep = FabMenuStep.IDENTIFY_SOURCE },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
                     }
                 }
 
@@ -270,7 +347,230 @@ fun DashboardScreen(
                     }
                 }
 
+                FabMenuStep.IDENTIFY_SOURCE -> {
+                    Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                        Text(
+                            text = "¿Cómo quieres identificar la planta?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                        HorizontalDivider()
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Outlined.CameraAlt, contentDescription = null) },
+                            label = {
+                                Column {
+                                    Text("Tomar foto")
+                                    Text(
+                                        "Abre la cámara para fotografiar la planta",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            selected = false,
+                            onClick = {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Outlined.Image, contentDescription = null) },
+                            label = {
+                                Column {
+                                    Text("Seleccionar de galería")
+                                    Text(
+                                        "Elige una foto existente",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            selected = false,
+                            onClick = { galleryLauncher.launch("image/*") },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                FabMenuStep.IDENTIFY_RESULT -> {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp, ).padding(bottom = 32.dp)) {
+                        Text(
+                            text = "Resultado de identificación",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(12.dp))
+
+                        if (uiState.isIdentifying) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                Text(
+                                    "Consultando IA...",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        } else {
+                            val result = uiState.identificationResult
+                            if (result != null) {
+                                IdentificationResultContent(
+                                    result = result,
+                                    onSaveAsPlant = {
+                                        IdentificationStore.pending = result
+                                        closeSheet()
+                                        onAddPlantFromIdentification()
+                                    },
+                                    onDismiss = { closeSheet() }
+                                )
+                            } else {
+                                Text(
+                                    "No se pudo identificar la planta. Intenta con otra foto.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                OutlinedButton(
+                                    onClick = { closeSheet() },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Cerrar") }
+                            }
+                        }
+                    }
+                }
+
                 FabMenuStep.NONE -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun IdentificationResultContent(
+    result: PlantIdentificationResult,
+    onSaveAsPlant: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(result.commonName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        if (result.scientificName.isNotBlank()) {
+            Text(
+                result.scientificName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = true,
+                onClick = {},
+                label = {
+                    Text(
+                        when (result.sunExposure) {
+                            SunExposure.INTERIOR -> "🏠 Interior"
+                            SunExposure.SEMI_SHADE -> "⛅ Semisombra"
+                            SunExposure.EXTERIOR -> "☀️ Exterior"
+                        }
+                    )
+                }
+            )
+            FilterChip(
+                selected = true,
+                onClick = {},
+                label = { Text("💧 Cada ${result.wateringFrequencyDays}d") }
+            )
+        }
+        if (result.regions.isNotBlank()) {
+            Text(
+                "📍 ${result.regions}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+        if (result.curiosities.isNotBlank()) {
+            HorizontalDivider()
+            Text("Curiosidades", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(result.curiosities, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onSaveAsPlant,
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) { Text("Guardar como nueva planta") }
+        OutlinedButton(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        ) { Text("Cerrar") }
+    }
+}
+
+private fun createIdentifyCameraUri(context: android.content.Context): android.net.Uri {
+    val dir = File(context.cacheDir, "plant_photos").also { it.mkdirs() }
+    val file = File(dir, "identify_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+@Composable
+private fun MoonPhaseCard(moonPhase: MoonPhase) {
+    var expanded by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = moonPhase.emoji,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text(
+                        text = moonPhase.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Luna · día ${moonPhase.dayOfCycle.toInt()} del ciclo",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) "Contraer" else "Expandir",
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.2f))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "🌿 ${moonPhase.gardeningTip}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
             }
         }
     }
@@ -340,6 +640,7 @@ private fun UpcomingReminderRow(item: PlantReminderItem, onClick: () -> Unit) {
                         ReminderType.FERTILIZING -> "Abono"
                         ReminderType.REPOTTING -> "Trasplante"
                         ReminderType.PRUNING -> "Poda"
+                        ReminderType.WATER_CHANGE -> "Cambio de agua"
                         ReminderType.CUSTOM -> item.reminder.customLabel ?: "Cuidado personalizado"
                     },
                     style = MaterialTheme.typography.bodySmall,

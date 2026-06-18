@@ -270,6 +270,7 @@ private fun CalendarReminderCard(
                     ReminderType.FERTILIZING -> "🌱"
                     ReminderType.REPOTTING -> "🪴"
                     ReminderType.PRUNING -> "✂️"
+                    ReminderType.WATER_CHANGE -> "🫧"
                     ReminderType.CUSTOM -> "⚙️"
                 },
                 style = MaterialTheme.typography.titleLarge
@@ -282,6 +283,7 @@ private fun CalendarReminderCard(
                         ReminderType.FERTILIZING -> "Abono"
                         ReminderType.REPOTTING -> "Trasplante"
                         ReminderType.PRUNING -> "Poda"
+                        ReminderType.WATER_CHANGE -> "Cambio de agua"
                         ReminderType.CUSTOM -> reminder.customLabel ?: "Cuidado personalizado"
                     },
                     style = MaterialTheme.typography.bodySmall,

@@ -25,6 +25,7 @@ object DatabaseModule {
             VerdyDatabase::class.java,
             VerdyDatabase.DATABASE_NAME
         )
+            .addMigrations(*VerdyDatabase.MIGRATIONS)
             .fallbackToDestructiveMigration()
             .build()
 

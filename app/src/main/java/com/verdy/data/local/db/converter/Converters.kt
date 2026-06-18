@@ -2,6 +2,7 @@ package com.verdy.data.local.db.converter
 
 import androidx.room.TypeConverter
 import com.verdy.domain.model.enums.MaintenanceAction
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
@@ -29,4 +30,9 @@ class Converters {
     // MaintenanceAction
     @TypeConverter fun fromMaintenanceAction(value: MaintenanceAction): String = value.name
     @TypeConverter fun toMaintenanceAction(value: String): MaintenanceAction = MaintenanceAction.valueOf(value)
+
+    // PlantMedium
+    @TypeConverter fun fromPlantMedium(value: PlantMedium): String = value.name
+    @TypeConverter fun toPlantMedium(value: String): PlantMedium =
+        runCatching { PlantMedium.valueOf(value) }.getOrDefault(PlantMedium.SOIL)
 }

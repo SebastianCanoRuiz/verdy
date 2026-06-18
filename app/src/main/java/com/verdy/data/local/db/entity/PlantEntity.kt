@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.SunExposure
 import java.time.LocalDate
@@ -28,7 +29,12 @@ data class PlantEntity(
     @ColumnInfo(name = "fertilizing_frequency_days") val fertilizingFrequencyDays: Int?,
     @ColumnInfo(name = "fertilizer_type") val fertilizerType: String?,
     @ColumnInfo(name = "water_amount_ml") val waterAmountMl: Int?,
-    @ColumnInfo(name = "sun_exposure") val sunExposure: SunExposure
+    @ColumnInfo(name = "sun_exposure") val sunExposure: SunExposure,
+
+    // Added in version 2
+    @ColumnInfo(name = "medium") val medium: PlantMedium = PlantMedium.SOIL,
+    @ColumnInfo(name = "water_change_frequency_days") val waterChangeFrequencyDays: Int? = null,
+    @ColumnInfo(name = "ai_curiosities") val aiCuriosities: String? = null
 ) {
     fun toDomain(): Plant = Plant(
         id = id,
@@ -45,8 +51,11 @@ data class PlantEntity(
             fertilizingFrequencyDays = fertilizingFrequencyDays,
             fertilizerType = fertilizerType,
             waterAmountMl = waterAmountMl,
-            sunExposure = sunExposure
-        )
+            sunExposure = sunExposure,
+            medium = medium,
+            waterChangeFrequencyDays = waterChangeFrequencyDays
+        ),
+        aiCuriosities = aiCuriosities
     )
 
     companion object {
@@ -64,7 +73,10 @@ data class PlantEntity(
             fertilizingFrequencyDays = plant.careInfo.fertilizingFrequencyDays,
             fertilizerType = plant.careInfo.fertilizerType,
             waterAmountMl = plant.careInfo.waterAmountMl,
-            sunExposure = plant.careInfo.sunExposure
+            sunExposure = plant.careInfo.sunExposure,
+            medium = plant.careInfo.medium,
+            waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays,
+            aiCuriosities = plant.aiCuriosities
         )
     }
 }

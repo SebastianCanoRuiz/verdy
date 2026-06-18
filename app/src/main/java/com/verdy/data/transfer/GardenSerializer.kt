@@ -6,6 +6,7 @@ import com.verdy.domain.model.Plant
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.ReminderFrequency
 import com.verdy.domain.model.enums.MaintenanceAction
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
@@ -34,7 +35,9 @@ data class PlantDto(
     val fertilizingFrequencyDays: Int? = null,
     val fertilizerType: String? = null,
     val waterAmountMl: Int? = null,
-    val sunExposure: String
+    val sunExposure: String,
+    val medium: String = "SOIL",
+    val waterChangeFrequencyDays: Int? = null
 )
 
 @Serializable
@@ -86,7 +89,9 @@ fun GardenExportData.toDto(photoFileNames: Map<Long, String> = emptyMap()): Gard
                 fertilizingFrequencyDays = plant.careInfo.fertilizingFrequencyDays,
                 fertilizerType = plant.careInfo.fertilizerType,
                 waterAmountMl = plant.careInfo.waterAmountMl,
-                sunExposure = plant.careInfo.sunExposure.name
+                sunExposure = plant.careInfo.sunExposure.name,
+                medium = plant.careInfo.medium.name,
+                waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays
             )
         },
         reminders = reminders.map { r ->
@@ -133,7 +138,9 @@ fun GardenDto.toDomain(): GardenExportData {
                     fertilizingFrequencyDays = dto.fertilizingFrequencyDays,
                     fertilizerType = dto.fertilizerType,
                     waterAmountMl = dto.waterAmountMl,
-                    sunExposure = runCatching { SunExposure.valueOf(dto.sunExposure) }.getOrDefault(SunExposure.SEMI_SHADE)
+                    sunExposure = runCatching { SunExposure.valueOf(dto.sunExposure) }.getOrDefault(SunExposure.SEMI_SHADE),
+                    medium = runCatching { PlantMedium.valueOf(dto.medium) }.getOrDefault(PlantMedium.SOIL),
+                    waterChangeFrequencyDays = dto.waterChangeFrequencyDays
                 )
             )
         },

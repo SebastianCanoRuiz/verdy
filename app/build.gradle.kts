@@ -7,6 +7,15 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+fun getLocalProperty(key: String): String {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return ""
+    return file.readLines()
+        .firstOrNull { it.startsWith("$key=") }
+        ?.substringAfter("=")
+        ?.trim() ?: ""
+}
+
 android {
     namespace = "com.verdy"
     compileSdk = 34
@@ -19,6 +28,12 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "OPENAI_API_KEY",
+            "\"${getLocalProperty("OPENAI_API_KEY")}\""
+        )
     }
 
     buildTypes {
@@ -108,6 +123,9 @@ dependencies {
     // ZXing (QR generation and scanning)
     implementation(libs.zxing.core)
     implementation(libs.zxing.android.embedded)
+
+    // OkHttp (OpenAI API calls)
+    implementation(libs.okhttp)
 
     // Unit Tests
     testImplementation(libs.junit)

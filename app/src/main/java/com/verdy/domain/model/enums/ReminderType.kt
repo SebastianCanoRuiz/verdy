@@ -5,5 +5,6 @@ enum class ReminderType {
     FERTILIZING,
     REPOTTING,
     PRUNING,
+    WATER_CHANGE,
     CUSTOM
 }

@@ -32,6 +32,7 @@
     <string name="reminder_fertilizing">Abono</string>
     <string name="reminder_repotting">Trasplante</string>
     <string name="reminder_pruning">Poda</string>
+    <string name="reminder_water_change">Cambio de agua</string>
     <string name="reminder_custom">Otro cuidado</string>
 
     <!-- Reminder frequency -->
@@ -126,6 +127,24 @@
     <string name="settings_import_success">Datos importados correctamente</string>
     <string name="settings_import_error">Error al importar los datos</string>
     <string name="settings_qr_too_large">Demasiados datos para un QR.\nUsa la exportación ZIP.</string>
+
+    <!-- Plant medium -->
+    <string name="plant_medium_soil">Tierra</string>
+    <string name="plant_medium_water">Agua</string>
+    <string name="plant_water_change_frequency">Cambio de agua cada (días)</string>
+
+    <!-- AI features -->
+    <string name="ai_identify_button">Identificar con IA</string>
+    <string name="ai_identifying">Identificando...</string>
+    <string name="ai_curiosities_title">Curiosidades</string>
+    <string name="ai_loading_curiosities">Consultando IA...</string>
+    <string name="ai_no_key">Configura tu API key de OpenAI para ver curiosidades.</string>
+    <string name="ai_identification_result">Resultado de identificación</string>
+    <string name="ai_save_as_plant">Guardar como nueva planta</string>
+
+    <!-- Moon phase -->
+    <string name="moon_phase_title">Fase lunar</string>
+    <string name="moon_gardening_tip">Consejo del jardín</string>
 
     <!-- Common -->
     <string name="confirm">Confirmar</string>

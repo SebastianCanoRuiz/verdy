@@ -16,5 +16,6 @@ data class Plant(
     val location: String? = null,
     val notes: String? = null,
     val status: PlantStatus = PlantStatus.HEALTHY,
-    val careInfo: CareInfo = CareInfo()
+    val careInfo: CareInfo = CareInfo(),
+    val aiCuriosities: String? = null
 )

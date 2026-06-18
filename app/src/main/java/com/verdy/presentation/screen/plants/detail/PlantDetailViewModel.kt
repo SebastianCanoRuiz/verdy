@@ -7,11 +7,13 @@ import com.verdy.domain.model.Plant
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.enums.MaintenanceAction
 import com.verdy.domain.model.enums.ReminderType
+import com.verdy.domain.usecase.ai.GetPlantCuriositiesUseCase
 import com.verdy.domain.usecase.maintenance.GetMaintenanceHistoryUseCase
 import com.verdy.domain.usecase.maintenance.GetLastCareDateUseCase
 import com.verdy.domain.usecase.maintenance.RegisterMaintenanceUseCase
 import com.verdy.domain.usecase.plant.DeletePlantUseCase
 import com.verdy.domain.usecase.plant.GetPlantByIdUseCase
+import com.verdy.domain.usecase.plant.UpdatePlantUseCase
 import com.verdy.domain.usecase.reminder.AddReminderUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,8 @@ data class PlantDetailUiState(
     val history: List<MaintenanceLog> = emptyList(),
     val lastWateringDate: LocalDate? = null,
     val lastFertilizingDate: LocalDate? = null,
+    val curiosities: String? = null,
+    val loadingCuriosities: Boolean = false,
     val isLoading: Boolean = true,
     val isDeleted: Boolean = false,
     val error: String? = null
@@ -37,7 +41,9 @@ class PlantDetailViewModel @Inject constructor(
     private val getMaintenanceHistory: GetMaintenanceHistoryUseCase,
     private val getLastCareDate: GetLastCareDateUseCase,
     private val registerMaintenance: RegisterMaintenanceUseCase,
-    private val deletePlant: DeletePlantUseCase
+    private val deletePlant: DeletePlantUseCase,
+    private val updatePlant: UpdatePlantUseCase,
+    private val getPlantCuriosities: GetPlantCuriositiesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlantDetailUiState())
@@ -53,10 +59,15 @@ class PlantDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         plant = plant,
+                        curiosities = plant.aiCuriosities,
                         lastWateringDate = lastWatering,
                         lastFertilizingDate = lastFertilizing,
                         isLoading = false
                     )
+                }
+                // Fetch curiosities from AI if not cached
+                if (plant.aiCuriosities == null) {
+                    fetchAndCacheCuriosities(plant)
                 }
                 // Observe history as Flow
                 getMaintenanceHistory(plantId).collect { history ->
@@ -81,6 +92,22 @@ class PlantDetailViewModel @Inject constructor(
         viewModelScope.launch {
             registerMaintenance(plant.id, ReminderType.FERTILIZING, MaintenanceAction.DONE)
             _uiState.update { it.copy(lastFertilizingDate = LocalDate.now()) }
+        }
+    }
+
+    private fun fetchAndCacheCuriosities(plant: Plant) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingCuriosities = true) }
+            val name = plant.scientificName?.takeIf { it.isNotBlank() } ?: plant.commonName
+            getPlantCuriosities(name).fold(
+                onSuccess = { text ->
+                    _uiState.update { it.copy(curiosities = text, loadingCuriosities = false) }
+                    updatePlant(plant.copy(aiCuriosities = text))
+                },
+                onFailure = {
+                    _uiState.update { it.copy(loadingCuriosities = false) }
+                }
+            )
         }
     }
 

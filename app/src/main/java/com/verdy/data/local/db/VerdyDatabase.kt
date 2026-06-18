@@ -10,6 +10,7 @@ import com.verdy.data.local.db.dao.ReminderDao
 import com.verdy.data.local.db.entity.MaintenanceLogEntity
 import com.verdy.data.local.db.entity.PlantEntity
 import com.verdy.data.local.db.entity.ReminderEntity
+import com.verdy.data.local.db.migration.MIGRATION_1_2
 
 @Database(
     entities = [
@@ -17,7 +18,7 @@ import com.verdy.data.local.db.entity.ReminderEntity
         ReminderEntity::class,
         MaintenanceLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -28,5 +29,6 @@ abstract class VerdyDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "verdy_database"
+        val MIGRATIONS = arrayOf(MIGRATION_1_2)
     }
 }

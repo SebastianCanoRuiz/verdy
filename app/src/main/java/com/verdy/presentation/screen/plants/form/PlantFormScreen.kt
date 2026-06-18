@@ -1,5 +1,6 @@
 package com.verdy.presentation.screen.plants.form
 
+import android.Manifest
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,6 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AddAPhoto
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,32 +40,38 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.verdy.R
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.SunExposure
 import java.io.File
@@ -76,6 +87,8 @@ fun PlantFormScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(editPlantId) {
         editPlantId?.let { viewModel.loadPlant(it) }
@@ -93,10 +106,71 @@ fun PlantFormScreen(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Copy to internal storage to avoid losing access to the content URI after restart
             val savedPath = copyPhotoToInternal(context, it)
             viewModel.onPhotoUriChange(savedPath)
         }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            pendingCameraUri?.let { uri ->
+                val savedPath = copyPhotoToInternal(context, uri)
+                viewModel.onPhotoUriChange(savedPath)
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createCameraUri(context)
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+
+    fun launchCamera() {
+        val uri = createCameraUri(context)
+        pendingCameraUri = uri
+        cameraLauncher.launch(uri)
+    }
+
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text("Fuente de la foto") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("  Cámara", modifier = Modifier.weight(1f))
+                    }
+                    TextButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            galleryLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("  Galería", modifier = Modifier.weight(1f))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPhotoSourceDialog = false }) { Text("Cancelar") }
+            }
+        )
     }
 
     Scaffold(
@@ -127,39 +201,67 @@ fun PlantFormScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Photo
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable { galleryLauncher.launch("image/*") },
-                contentAlignment = Alignment.Center
+            // Photo + AI identify button
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (uiState.photoUri != null) {
-                    AsyncImage(
-                        model = uiState.photoUri,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.AddAPhoto,
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { showPhotoSourceDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (uiState.photoUri != null) {
+                        AsyncImage(
+                            model = uiState.photoUri,
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Text(
-                            "Foto",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.AddAPhoto,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "Foto",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                if (uiState.photoUri != null) {
+                    OutlinedButton(
+                        onClick = { viewModel.identifyFromPhoto(uiState.photoUri!!) },
+                        enabled = !uiState.isIdentifying,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (uiState.isIdentifying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Text("Identificando...", modifier = Modifier.padding(start = 8.dp))
+                        } else {
+                            Icon(
+                                Icons.Outlined.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("Identificar con IA", modifier = Modifier.padding(start = 6.dp))
+                        }
                     }
                 }
             }
@@ -220,6 +322,23 @@ fun PlantFormScreen(
                         }
                     )
                 }
+            }
+
+            HorizontalDivider()
+
+            // Plant medium
+            SectionHeader("Medio de cultivo")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = uiState.medium == PlantMedium.SOIL,
+                    onClick = { viewModel.onMediumChange(PlantMedium.SOIL) },
+                    label = { Text("🌱 Tierra") }
+                )
+                FilterChip(
+                    selected = uiState.medium == PlantMedium.WATER,
+                    onClick = { viewModel.onMediumChange(PlantMedium.WATER) },
+                    label = { Text("💧 Agua") }
+                )
             }
 
             HorizontalDivider()
@@ -299,46 +418,77 @@ fun PlantFormScreen(
                 }
             }
 
-            HorizontalDivider()
-
-            // Fertilizing section
-            SectionHeader("Abono")
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Water change section (only for water plants)
+            if (uiState.medium == PlantMedium.WATER) {
+                HorizontalDivider()
+                SectionHeader("Cambio de agua")
                 OutlinedTextField(
-                    value = uiState.fertilizingFrequencyDays,
-                    onValueChange = viewModel::onFertilizingFrequencyChange,
-                    label = { Text("Frecuencia (días, opcional)") },
-                    modifier = Modifier.weight(1f),
+                    value = uiState.waterChangeFrequencyDays,
+                    onValueChange = viewModel::onWaterChangeFrequencyChange,
+                    label = { Text("Cambiar cada (días)") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp)
                 )
-                OutlinedTextField(
-                    value = uiState.fertilizerType,
-                    onValueChange = viewModel::onFertilizerTypeChange,
-                    label = { Text("Tipo de abono") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                if (!uiState.isEditMode && (uiState.waterChangeFrequencyDays.toIntOrNull() ?: 0) > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Crear recordatorio de cambio de agua",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = uiState.autoCreateWaterChangeReminder,
+                            onCheckedChange = viewModel::onAutoWaterChangeReminderChange
+                        )
+                    }
+                }
             }
 
-            if (!uiState.isEditMode && (uiState.fertilizingFrequencyDays.toIntOrNull() ?: 0) > 0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Crear recordatorio de abono automáticamente",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f)
+            HorizontalDivider()
+
+            if (uiState.medium == PlantMedium.SOIL) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = uiState.fertilizingFrequencyDays,
+                        onValueChange = viewModel::onFertilizingFrequencyChange,
+                        label = { Text("Frecuencia (días, opcional)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                    Switch(
-                        checked = uiState.autoCreateFertilizingReminder,
-                        onCheckedChange = viewModel::onAutoFertilizingReminderChange
+                    OutlinedTextField(
+                        value = uiState.fertilizerType,
+                        onValueChange = viewModel::onFertilizerTypeChange,
+                        label = { Text("Tipo de abono") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
                     )
+                }
+
+                if (!uiState.isEditMode && (uiState.fertilizingFrequencyDays.toIntOrNull() ?: 0) > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Crear recordatorio de abono automáticamente",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = uiState.autoCreateFertilizingReminder,
+                            onCheckedChange = viewModel::onAutoFertilizingReminderChange
+                        )
+                    }
                 }
             }
 
@@ -412,3 +562,13 @@ private fun copyPhotoToInternal(context: Context, sourceUri: Uri): String? =
         }
         dest.absolutePath
     }.getOrNull()
+
+/**
+ * Creates a temporary file in cache/plant_photos/ and returns its FileProvider URI.
+ * Used as the output URI for the camera capture contract.
+ */
+private fun createCameraUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "plant_photos").also { it.mkdirs() }
+    val file = File(dir, "camera_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
