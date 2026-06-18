@@ -33,7 +33,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,9 +67,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.verdy.R
 import com.verdy.domain.model.PlantIdentificationResult
 import com.verdy.domain.model.enums.ReminderType
-import com.verdy.domain.model.enums.SunExposure
 import com.verdy.domain.util.MoonPhase
 import com.verdy.presentation.component.EmptyState
+import com.verdy.presentation.component.IdentificationPreviewCard
 import com.verdy.presentation.component.ReminderCard
 import com.verdy.presentation.screen.dashboard.IdentificationStore
 import kotlinx.coroutines.launch
@@ -457,60 +456,18 @@ private fun IdentificationResultContent(
     onSaveAsPlant: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(result.commonName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        if (result.scientificName.isNotBlank()) {
-            Text(
-                result.scientificName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = true,
-                onClick = {},
-                label = {
-                    Text(
-                        when (result.sunExposure) {
-                            SunExposure.INTERIOR -> "🏠 Interior"
-                            SunExposure.SEMI_SHADE -> "⛅ Semisombra"
-                            SunExposure.EXTERIOR -> "☀️ Exterior"
-                        }
-                    )
-                }
-            )
-            FilterChip(
-                selected = true,
-                onClick = {},
-                label = { Text("💧 Cada ${result.wateringFrequencyDays}d") }
-            )
-        }
-        if (result.regions.isNotBlank()) {
-            Text(
-                "📍 ${result.regions}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-        if (result.curiosities.isNotBlank()) {
-            HorizontalDivider()
-            Text("Curiosidades", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(result.curiosities, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(8.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        IdentificationPreviewCard(result = result, showTitle = false)
         Button(
             onClick = onSaveAsPlant,
             modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-        ) { Text("Guardar como nueva planta") }
+            shape = RoundedCornerShape(12.dp)
+        ) { Text(stringResource(R.string.ai_save_as_plant)) }
         OutlinedButton(
             onClick = onDismiss,
             modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-        ) { Text("Cerrar") }
+            shape = RoundedCornerShape(12.dp)
+        ) { Text(stringResource(R.string.cancel)) }
     }
 }
 

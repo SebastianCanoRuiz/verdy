@@ -16,6 +16,12 @@ fun getLocalProperty(key: String): String {
         ?.trim() ?: ""
 }
 
+/** XOR-encodes a string so it never appears as plaintext in the compiled APK. */
+fun obfuscateKey(value: String): String {
+    val seed = 63 // 0x3F
+    return value.map { c -> (c.code xor seed).toString() }.joinToString(",")
+}
+
 android {
     namespace = "com.verdy"
     compileSdk = 34
@@ -31,8 +37,8 @@ android {
 
         buildConfigField(
             "String",
-            "OPENAI_API_KEY",
-            "\"${getLocalProperty("OPENAI_API_KEY")}\""
+            "OAK_ENC",
+            "\"${obfuscateKey(getLocalProperty("OPENAI_API_KEY"))}\""
         )
     }
 

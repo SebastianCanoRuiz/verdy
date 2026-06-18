@@ -1,5 +1,10 @@
 package com.verdy.presentation.screen.plants.detail
 
+import android.Manifest
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -24,12 +29,16 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Grass
+import androidx.compose.material.icons.outlined.Healing
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,11 +49,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,9 +75,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -72,8 +88,9 @@ import com.verdy.domain.model.MaintenanceLog
 import com.verdy.domain.model.enums.MaintenanceAction
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
+import com.verdy.presentation.component.PlantHealthEvaluationCard
 import com.verdy.presentation.component.StatusBadge
-import com.verdy.presentation.util.DateFormatter
+import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -87,8 +104,37 @@ fun PlantDetailScreen(
     viewModel: PlantDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPhotoViewer by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val healthGalleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { copyUriToTemp(context, it)?.let { path -> viewModel.evaluateHealth(path) } }
+    }
+
+    val healthCameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            pendingCameraUri?.let { uri ->
+                copyUriToTemp(context, uri)?.let { path -> viewModel.evaluateHealth(path) }
+            }
+        }
+    }
+
+    val healthCameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createHealthCameraUri(context)
+            pendingCameraUri = uri
+            healthCameraLauncher.launch(uri)
+        }
+    }
 
     LaunchedEffect(plantId) {
         viewModel.loadPlant(plantId)
@@ -96,6 +142,13 @@ fun PlantDetailScreen(
 
     LaunchedEffect(uiState.isDeleted) {
         if (uiState.isDeleted) onBack()
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
     }
 
     // Fullscreen zoomable photo viewer
@@ -124,6 +177,50 @@ fun PlantDetailScreen(
                 }
             }
         )
+    }
+
+    uiState.pendingHealthEvaluation?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { viewModel.confirmPendingHealthEvaluation(apply = false) },
+            title = { Text(stringResource(R.string.health_eval_confirm_low_confidence)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        pending.summary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    PlantHealthEvaluationCard(
+                        result = pending,
+                        statusApplied = false
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.confirmPendingHealthEvaluation(apply = true) }) {
+                    Text(stringResource(R.string.health_eval_apply_status))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.confirmPendingHealthEvaluation(apply = false) }) {
+                    Text(stringResource(R.string.health_eval_keep_status))
+                }
+            }
+        )
+    }
+
+    if (uiState.showHealthEvaluationSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = viewModel::dismissHealthEvaluation,
+            sheetState = sheetState
+        ) {
+            HealthEvaluationSheetContent(
+                isEvaluating = uiState.isEvaluatingHealth,
+                evaluation = uiState.healthEvaluation,
+                onCameraClick = { healthCameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
+                onGalleryClick = { healthGalleryLauncher.launch("image/*") }
+            )
+        }
     }
 
     Scaffold(
@@ -157,7 +254,8 @@ fun PlantDetailScreen(
             ) {
                 Icon(Icons.Filled.Notifications, contentDescription = "Recordatorios")
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
 
         if (uiState.isLoading) {
@@ -284,6 +382,14 @@ fun PlantDetailScreen(
                 Spacer(Modifier.height(8.dp))
             }
 
+            // Health evaluation section
+            item {
+                HealthEvaluationSection(
+                    lastEvaluation = uiState.healthEvaluation,
+                    onEvaluateClick = viewModel::openHealthEvaluation
+                )
+            }
+
             // Notes
             plant.notes?.let { notes ->
                 item {
@@ -374,16 +480,16 @@ private fun CuriositiesSection(
             curiosities != null -> {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
                         text = curiosities,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(12.dp)
                     )
                 }
@@ -437,8 +543,12 @@ private fun CareInfoCard(
 
 @Composable
 private fun HistoryRow(log: MaintenanceLog) {
-    val emoji = when (log.action) {
-        MaintenanceAction.DONE -> when (log.type) {
+    val isHealthEval = log.type == ReminderType.CUSTOM &&
+        log.notes?.startsWith("Evaluación IA:") == true
+
+    val emoji = when {
+        isHealthEval -> "🩺"
+        log.action == MaintenanceAction.DONE -> when (log.type) {
             ReminderType.WATERING -> "💧"
             ReminderType.FERTILIZING -> "🌱"
             ReminderType.REPOTTING -> "🪴"
@@ -446,12 +556,13 @@ private fun HistoryRow(log: MaintenanceLog) {
             ReminderType.WATER_CHANGE -> "🫧"
             ReminderType.CUSTOM -> "✅"
         }
-        MaintenanceAction.POSTPONED -> "⏰"
-        MaintenanceAction.IGNORED -> "✗"
+        log.action == MaintenanceAction.POSTPONED -> "⏰"
+        else -> "✗"
     }
 
-    val actionLabel = when (log.action) {
-        MaintenanceAction.DONE -> when (log.type) {
+    val actionLabel = when {
+        isHealthEval -> stringResource(R.string.history_health_evaluation)
+        log.action == MaintenanceAction.DONE -> when (log.type) {
             ReminderType.WATERING -> "Riego realizado"
             ReminderType.FERTILIZING -> "Abono aplicado"
             ReminderType.REPOTTING -> "Trasplante realizado"
@@ -459,8 +570,8 @@ private fun HistoryRow(log: MaintenanceLog) {
             ReminderType.WATER_CHANGE -> "Cambio de agua realizado"
             ReminderType.CUSTOM -> log.notes ?: "Cuidado realizado"
         }
-        MaintenanceAction.POSTPONED -> "Pospuesto"
-        MaintenanceAction.IGNORED -> "Ignorado"
+        log.action == MaintenanceAction.POSTPONED -> "Pospuesto"
+        else -> "Ignorado"
     }
 
     Row(
@@ -487,6 +598,173 @@ private fun HistoryRow(log: MaintenanceLog) {
 
 private fun formatDate(date: LocalDate): String =
     date.format(DateTimeFormatter.ofPattern("d MMM"))
+
+@Composable
+private fun HealthEvaluationSection(
+    lastEvaluation: com.verdy.domain.model.PlantHealthEvaluationResult?,
+    onEvaluateClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Healing,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        stringResource(R.string.health_eval_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Text(
+                    stringResource(R.string.health_eval_tips_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                listOf(
+                    R.string.health_eval_tip_light,
+                    R.string.health_eval_tip_focus,
+                    R.string.health_eval_tip_angle,
+                    R.string.health_eval_tip_background
+                ).forEach { tipRes ->
+                    Text(
+                        "• ${stringResource(tipRes)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Button(
+                    onClick = onEvaluateClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(
+                        stringResource(R.string.health_eval_button),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+
+        lastEvaluation?.let { result ->
+            PlantHealthEvaluationCard(result = result, statusApplied = true)
+        }
+    }
+}
+
+@Composable
+private fun HealthEvaluationSheetContent(
+    isEvaluating: Boolean,
+    evaluation: com.verdy.domain.model.PlantHealthEvaluationResult?,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            stringResource(R.string.health_eval_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            stringResource(R.string.health_eval_tips_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        listOf(
+            R.string.health_eval_tip_light,
+            R.string.health_eval_tip_focus,
+            R.string.health_eval_tip_angle
+        ).forEach { tipRes ->
+            Text(
+                "• ${stringResource(tipRes)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (isEvaluating) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    stringResource(R.string.health_eval_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (evaluation == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onCameraClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(" Cámara", style = MaterialTheme.typography.labelMedium)
+                }
+                OutlinedButton(
+                    onClick = onGalleryClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(" Galería", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        } else {
+            PlantHealthEvaluationCard(result = evaluation, statusApplied = true)
+        }
+    }
+}
+
+private fun copyUriToTemp(context: Context, uri: Uri): String? =
+    runCatching {
+        val tmp = File(context.cacheDir, "health_eval_${System.currentTimeMillis()}.jpg")
+        context.contentResolver.openInputStream(uri)?.use { inp ->
+            tmp.outputStream().use { out -> inp.copyTo(out) }
+        }
+        tmp.absolutePath
+    }.getOrNull()
+
+private fun createHealthCameraUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "plant_photos").also { it.mkdirs() }
+    val file = File(dir, "health_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
 
 /**
  * Fullscreen dialog that shows a plant photo with pinch-to-zoom support.

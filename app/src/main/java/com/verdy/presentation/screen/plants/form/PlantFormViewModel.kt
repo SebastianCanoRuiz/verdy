@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.verdy.data.worker.WorkManagerScheduler
 import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.PlantIdentificationResult
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.ReminderFrequency
 import com.verdy.domain.model.enums.PlantMedium
@@ -47,6 +48,8 @@ data class PlantFormUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isIdentifying: Boolean = false,
+    val lastIdentification: PlantIdentificationResult? = null,
+    val cachedAiCuriosities: String? = null,
     val savedSuccessfully: Boolean = false,
     val error: String? = null,
     val isEditMode: Boolean = false
@@ -68,20 +71,8 @@ class PlantFormViewModel @Inject constructor(
     private var editPlantId: Long? = null
 
     init {
-        // Pre-fill form if an identification result is waiting
         IdentificationStore.consume()?.let { result ->
-            _uiState.update { state ->
-                state.copy(
-                    commonName = result.commonName,
-                    scientificName = result.scientificName,
-                    sunExposure = result.sunExposure,
-                    wateringFrequencyDays = result.wateringFrequencyDays.toString(),
-                    notes = buildString {
-                        if (result.curiosities.isNotBlank()) append(result.curiosities)
-                        if (result.regions.isNotBlank()) append("\n\nRegiones: ${result.regions}")
-                    }
-                )
-            }
+            _uiState.update { applyIdentificationResult(it, result) }
         }
     }
 
@@ -109,6 +100,7 @@ class PlantFormViewModel @Inject constructor(
                         sunExposure = plant.careInfo.sunExposure,
                         medium = plant.careInfo.medium,
                         waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays?.toString() ?: "7",
+                        cachedAiCuriosities = plant.aiCuriosities,
                         isLoading = false,
                         isEditMode = true
                     )
@@ -161,7 +153,9 @@ class PlantFormViewModel @Inject constructor(
                     medium = state.medium,
                     waterChangeFrequencyDays = if (state.medium == PlantMedium.WATER)
                         state.waterChangeFrequencyDays.toIntOrNull() else null
-                )
+                ),
+                aiCuriosities = state.lastIdentification?.curiosities?.takeIf { it.isNotBlank() }
+                    ?: state.cachedAiCuriosities
             )
 
             if (editPlantId != null) {
@@ -188,18 +182,7 @@ class PlantFormViewModel @Inject constructor(
             identifyPlant(imagePath).fold(
                 onSuccess = { result ->
                     _uiState.update { state ->
-                        state.copy(
-                            commonName = result.commonName,
-                            scientificName = result.scientificName,
-                            sunExposure = result.sunExposure,
-                            wateringFrequencyDays = result.wateringFrequencyDays.toString(),
-                            notes = buildString {
-                                if (state.notes.isNotBlank()) append(state.notes).append("\n\n")
-                                if (result.curiosities.isNotBlank()) append(result.curiosities)
-                                if (result.regions.isNotBlank()) append("\n\nRegiones: ${result.regions}")
-                            },
-                            isIdentifying = false
-                        )
+                        applyIdentificationResult(state, result).copy(isIdentifying = false)
                     }
                 },
                 onFailure = { e ->
@@ -208,6 +191,21 @@ class PlantFormViewModel @Inject constructor(
             )
         }
     }
+
+    private fun applyIdentificationResult(
+        state: PlantFormUiState,
+        result: PlantIdentificationResult
+    ): PlantFormUiState = state.copy(
+        customName = state.customName.ifBlank { result.commonName },
+        commonName = result.commonName,
+        scientificName = result.scientificName,
+        sunExposure = result.sunExposure,
+        wateringFrequencyDays = result.wateringFrequencyDays.toString(),
+        fertilizingFrequencyDays = result.fertilizingFrequencyDays?.toString()
+            ?: state.fertilizingFrequencyDays,
+        fertilizerType = result.fertilizerType ?: state.fertilizerType,
+        lastIdentification = result
+    )
 
     private suspend fun autoCreateReminders(plantId: Long, state: PlantFormUiState) {
         val wateringDays = state.wateringFrequencyDays.toIntOrNull() ?: 0
