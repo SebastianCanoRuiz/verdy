@@ -10,6 +10,7 @@ import com.verdy.domain.model.enums.MaintenanceAction
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.usecase.ai.EvaluatePlantHealthUseCase
 import com.verdy.domain.usecase.ai.GetPlantCuriositiesUseCase
+import com.verdy.domain.repository.PlantEnvironmentRepository
 import com.verdy.domain.usecase.maintenance.GetMaintenanceHistoryUseCase
 import com.verdy.domain.usecase.maintenance.GetLastCareDateUseCase
 import com.verdy.domain.usecase.maintenance.RegisterMaintenanceUseCase
@@ -37,6 +38,7 @@ data class PlantDetailUiState(
     val healthEvaluation: PlantHealthEvaluationResult? = null,
     val showHealthEvaluationSheet: Boolean = false,
     val pendingHealthEvaluation: PlantHealthEvaluationResult? = null,
+    val environmentName: String? = null,
     val error: String? = null
 )
 
@@ -49,7 +51,8 @@ class PlantDetailViewModel @Inject constructor(
     private val deletePlant: DeletePlantUseCase,
     private val updatePlant: UpdatePlantUseCase,
     private val getPlantCuriosities: GetPlantCuriositiesUseCase,
-    private val evaluatePlantHealth: EvaluatePlantHealthUseCase
+    private val evaluatePlantHealth: EvaluatePlantHealthUseCase,
+    private val environmentRepository: PlantEnvironmentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlantDetailUiState())
@@ -62,9 +65,13 @@ class PlantDetailViewModel @Inject constructor(
             if (plant != null) {
                 val lastWatering = getLastCareDate(plantId, ReminderType.WATERING)
                 val lastFertilizing = getLastCareDate(plantId, ReminderType.FERTILIZING)
+                val envName = plant.environmentId?.let { envId ->
+                    environmentRepository.getEnvironmentById(envId)?.name
+                }
                 _uiState.update {
                     it.copy(
                         plant = plant,
+                        environmentName = envName,
                         curiosities = plant.aiCuriosities,
                         lastWateringDate = lastWatering,
                         lastFertilizingDate = lastFertilizing,
@@ -166,6 +173,9 @@ class PlantDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             plant = updatedPlant,
+                            environmentName = updatedPlant.environmentId?.let { envId ->
+                                environmentRepository.getEnvironmentById(envId)?.name
+                            },
                             healthEvaluation = result,
                             pendingHealthEvaluation = null,
                             isEvaluatingHealth = false

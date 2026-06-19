@@ -21,6 +21,7 @@ data class PlantEntity(
     @ColumnInfo(name = "photo_uri") val photoUri: String?,
     @ColumnInfo(name = "acquisition_date") val acquisitionDate: LocalDate?,
     @ColumnInfo(name = "location") val location: String?,
+    @ColumnInfo(name = "environment_id") val environmentId: Long? = null,
     @ColumnInfo(name = "notes") val notes: String?,
     @ColumnInfo(name = "status") val status: PlantStatus,
 
@@ -43,7 +44,7 @@ data class PlantEntity(
         scientificName = scientificName,
         photoUri = photoUri,
         acquisitionDate = acquisitionDate,
-        location = location,
+        environmentId = environmentId,
         notes = notes,
         status = status,
         careInfo = CareInfo(
@@ -66,7 +67,8 @@ data class PlantEntity(
             scientificName = plant.scientificName,
             photoUri = plant.photoUri,
             acquisitionDate = plant.acquisitionDate,
-            location = plant.location,
+            location = null,
+            environmentId = plant.environmentId,
             notes = plant.notes,
             status = plant.status,
             wateringFrequencyDays = plant.careInfo.wateringFrequencyDays,

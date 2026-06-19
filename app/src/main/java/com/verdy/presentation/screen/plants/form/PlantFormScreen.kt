@@ -81,6 +81,7 @@ import com.verdy.R
 import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.SunExposure
+import com.verdy.presentation.component.EnvironmentSelector
 import com.verdy.presentation.component.IdentificationPreviewCard
 import java.io.File
 
@@ -97,6 +98,37 @@ fun PlantFormScreen(
     val context = LocalContext.current
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var newEnvironmentName by remember { mutableStateOf("") }
+
+    if (uiState.showCreateEnvironmentDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCreateEnvironmentDialog,
+            title = { Text(stringResource(R.string.environment_create)) },
+            text = {
+                OutlinedTextField(
+                    value = newEnvironmentName,
+                    onValueChange = { newEnvironmentName = it },
+                    label = { Text(stringResource(R.string.environment_create_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.createEnvironment(newEnvironmentName)
+                        newEnvironmentName = ""
+                    },
+                    enabled = newEnvironmentName.isNotBlank()
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissCreateEnvironmentDialog) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     LaunchedEffect(editPlantId) {
         editPlantId?.let { viewModel.loadPlant(it) }
@@ -335,13 +367,11 @@ fun PlantFormScreen(
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
                         )
-                        OutlinedTextField(
-                            value = uiState.location,
-                            onValueChange = viewModel::onLocationChange,
-                            label = { Text(stringResource(R.string.plant_location)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
+                        EnvironmentSelector(
+                            environments = uiState.environments,
+                            selectedEnvironmentId = uiState.selectedEnvironmentId,
+                            onEnvironmentSelected = viewModel::onEnvironmentSelected,
+                            onCreateClick = viewModel::showCreateEnvironmentDialog
                         )
 
                         Text(

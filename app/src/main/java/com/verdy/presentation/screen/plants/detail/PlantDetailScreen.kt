@@ -334,7 +334,7 @@ fun PlantDetailScreen(
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
-                    plant.location?.let {
+                    uiState.environmentName?.let {
                         Text(
                             text = "📍 $it",
                             style = MaterialTheme.typography.bodyMedium,

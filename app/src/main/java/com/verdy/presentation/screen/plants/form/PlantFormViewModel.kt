@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.verdy.data.worker.WorkManagerScheduler
 import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.PlantEnvironment
 import com.verdy.domain.model.PlantIdentificationResult
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.ReminderFrequency
@@ -13,6 +14,8 @@ import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
 import com.verdy.domain.usecase.ai.IdentifyPlantUseCase
+import com.verdy.domain.usecase.environment.CreateEnvironmentUseCase
+import com.verdy.domain.usecase.environment.GetAllEnvironmentsUseCase
 import com.verdy.domain.usecase.plant.AddPlantUseCase
 import com.verdy.presentation.screen.dashboard.IdentificationStore
 import com.verdy.domain.usecase.plant.GetPlantByIdUseCase
@@ -32,7 +35,9 @@ data class PlantFormUiState(
     val scientificName: String = "",
     val photoUri: String? = null,
     val acquisitionDate: LocalDate? = null,
-    val location: String = "",
+    val selectedEnvironmentId: Long? = null,
+    val environments: List<PlantEnvironment> = emptyList(),
+    val showCreateEnvironmentDialog: Boolean = false,
     val notes: String = "",
     val status: PlantStatus = PlantStatus.HEALTHY,
     val wateringFrequencyDays: String = "7",
@@ -62,7 +67,9 @@ class PlantFormViewModel @Inject constructor(
     private val getPlantById: GetPlantByIdUseCase,
     private val addReminder: AddReminderUseCase,
     private val workManagerScheduler: WorkManagerScheduler,
-    private val identifyPlant: IdentifyPlantUseCase
+    private val identifyPlant: IdentifyPlantUseCase,
+    private val getAllEnvironments: GetAllEnvironmentsUseCase,
+    private val createEnvironmentUseCase: CreateEnvironmentUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlantFormUiState())
@@ -71,6 +78,11 @@ class PlantFormViewModel @Inject constructor(
     private var editPlantId: Long? = null
 
     init {
+        viewModelScope.launch {
+            getAllEnvironments().collect { envs ->
+                _uiState.update { it.copy(environments = envs) }
+            }
+        }
         IdentificationStore.consume()?.let { result ->
             _uiState.update { applyIdentificationResult(it, result) }
         }
@@ -90,7 +102,7 @@ class PlantFormViewModel @Inject constructor(
                         scientificName = plant.scientificName ?: "",
                         photoUri = plant.photoUri,
                         acquisitionDate = plant.acquisitionDate,
-                        location = plant.location ?: "",
+                        selectedEnvironmentId = plant.environmentId,
                         notes = plant.notes ?: "",
                         status = plant.status,
                         wateringFrequencyDays = plant.careInfo.wateringFrequencyDays.toString(),
@@ -116,7 +128,26 @@ class PlantFormViewModel @Inject constructor(
     fun onScientificNameChange(value: String) = _uiState.update { it.copy(scientificName = value) }
     fun onPhotoUriChange(uri: String?) = _uiState.update { it.copy(photoUri = uri) }
     fun onAcquisitionDateChange(date: LocalDate?) = _uiState.update { it.copy(acquisitionDate = date) }
-    fun onLocationChange(value: String) = _uiState.update { it.copy(location = value) }
+    fun onEnvironmentSelected(id: Long?) = _uiState.update { it.copy(selectedEnvironmentId = id) }
+    fun showCreateEnvironmentDialog() = _uiState.update { it.copy(showCreateEnvironmentDialog = true) }
+    fun dismissCreateEnvironmentDialog() = _uiState.update { it.copy(showCreateEnvironmentDialog = false) }
+
+    fun createEnvironment(name: String) {
+        viewModelScope.launch {
+            createEnvironmentUseCase(name).fold(
+                onSuccess = { id ->
+                    _uiState.update {
+                        it.copy(
+                            selectedEnvironmentId = id,
+                            showCreateEnvironmentDialog = false
+                        )
+                    }
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
     fun onStatusChange(status: PlantStatus) = _uiState.update { it.copy(status = status) }
     fun onWateringFrequencyChange(value: String) = _uiState.update { it.copy(wateringFrequencyDays = value) }
@@ -141,7 +172,7 @@ class PlantFormViewModel @Inject constructor(
                 scientificName = state.scientificName.trim().takeIf { it.isNotBlank() },
                 photoUri = state.photoUri,
                 acquisitionDate = state.acquisitionDate,
-                location = state.location.trim().takeIf { it.isNotBlank() },
+                environmentId = state.selectedEnvironmentId,
                 notes = state.notes.trim().takeIf { it.isNotBlank() },
                 status = state.status,
                 careInfo = CareInfo(

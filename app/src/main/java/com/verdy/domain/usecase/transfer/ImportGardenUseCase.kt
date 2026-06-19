@@ -1,34 +1,44 @@
 package com.verdy.domain.usecase.transfer
 
 import com.verdy.domain.repository.MaintenanceRepository
+import com.verdy.domain.repository.PlantEnvironmentRepository
 import com.verdy.domain.repository.PlantRepository
 import com.verdy.domain.repository.ReminderRepository
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class ImportGardenUseCase @Inject constructor(
     private val plantRepository: PlantRepository,
     private val reminderRepository: ReminderRepository,
-    private val maintenanceRepository: MaintenanceRepository
+    private val maintenanceRepository: MaintenanceRepository,
+    private val environmentRepository: PlantEnvironmentRepository
 ) {
-    /**
-     * Imports all garden data.
-     * When [replaceExisting] is true, all current data is wiped first.
-     * When false, imported plants are merged (added) alongside existing ones.
-     */
     suspend operator fun invoke(
         data: GardenExportData,
         replaceExisting: Boolean = false
     ): Result<Unit> = runCatching {
         if (replaceExisting) {
-            // Delete all existing data before importing
-            val existingPlants = plantRepository.getAllPlants()
-            // We'll just re-insert; deletion is handled by foreign keys
+            // Deletion handled by merge strategy; plants are always added
         }
 
-        val plantIdMap = mutableMapOf<Long, Long>() // old id -> new id
+        val environmentIdMap = mutableMapOf<Long, Long>()
+        val existingEnvironments = environmentRepository.getAllEnvironments().first()
+        for (environment in data.environments) {
+            val existing = existingEnvironments.find {
+                it.name.equals(environment.name, ignoreCase = true)
+            }
+            val newId = existing?.id
+                ?: environmentRepository.createEnvironment(environment.name).getOrThrow()
+            environmentIdMap[environment.id] = newId
+        }
+
+        val plantIdMap = mutableMapOf<Long, Long>()
 
         for (plant in data.plants) {
-            val newId = plantRepository.addPlant(plant.copy(id = 0))
+            val mappedEnvironmentId = plant.environmentId?.let { environmentIdMap[it] }
+            val newId = plantRepository.addPlant(
+                plant.copy(id = 0, environmentId = mappedEnvironmentId)
+            )
             plantIdMap[plant.id] = newId
         }
 

@@ -184,6 +184,20 @@
     <string name="health_eval_suggested_status">Estado sugerido</string>
     <string name="history_health_evaluation">Evaluación de estado</string>
 
+    <!-- Environments -->
+    <string name="environment_title">Ambiente</string>
+    <string name="environment_select">Selecciona un ambiente</string>
+    <string name="environment_create">Nuevo ambiente</string>
+    <string name="environment_create_hint">Nombre del ambiente</string>
+    <string name="environment_manage">Gestionar ambientes</string>
+    <string name="environment_unassigned">Sin ambiente</string>
+    <string name="environment_plant_count">%d plantas</string>
+    <string name="environment_plant_count_one">1 planta</string>
+    <string name="environment_delete_confirm">¿Eliminar el ambiente \"%s\"? Las plantas quedarán sin ambiente asignado.</string>
+    <string name="environment_name_exists">Ya existe un ambiente con ese nombre</string>
+    <string name="environment_rename">Renombrar</string>
+    <string name="environment_delete">Eliminar ambiente</string>
+
     <!-- Moon phase -->
     <string name="moon_phase_title">Fase lunar</string>
     <string name="moon_gardening_tip">Consejo del jardín</string>

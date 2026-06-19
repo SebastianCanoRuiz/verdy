@@ -13,7 +13,7 @@ data class Plant(
     val scientificName: String? = null,
     val photoUri: String? = null,
     val acquisitionDate: LocalDate? = null,
-    val location: String? = null,
+    val environmentId: Long? = null,
     val notes: String? = null,
     val status: PlantStatus = PlantStatus.HEALTHY,
     val careInfo: CareInfo = CareInfo(),

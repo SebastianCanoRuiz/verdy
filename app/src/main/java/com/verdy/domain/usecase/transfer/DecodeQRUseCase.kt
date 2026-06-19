@@ -23,7 +23,6 @@ class DecodeQRUseCase @Inject constructor() {
                 customName = p.getString("n"),
                 commonName = p.getString("c"),
                 scientificName = p.optString("s").takeIf { it.isNotEmpty() },
-                location = p.optString("l").takeIf { it.isNotEmpty() },
                 status = runCatching { PlantStatus.valueOf(p.optString("st", "HEALTHY")) }
                     .getOrDefault(PlantStatus.HEALTHY),
                 careInfo = CareInfo(
