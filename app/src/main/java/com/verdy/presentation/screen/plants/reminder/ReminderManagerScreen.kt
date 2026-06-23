@@ -163,6 +163,7 @@ private fun ReminderItemCard(
                         ReminderType.FERTILIZING -> "🌱 Abono"
                         ReminderType.REPOTTING -> "🪴 Trasplante"
                         ReminderType.PRUNING -> "✂️ Poda"
+                        ReminderType.WATER_CHANGE -> "🫧 Cambio de agua"
                         ReminderType.CUSTOM -> "⚙️ ${reminder.customLabel ?: "Personalizado"}"
                     },
                     style = MaterialTheme.typography.titleSmall,
@@ -295,6 +296,7 @@ private fun reminderTypeLabel(type: ReminderType): String = when (type) {
     ReminderType.FERTILIZING -> "Abono"
     ReminderType.REPOTTING -> "Trasplante"
     ReminderType.PRUNING -> "Poda"
+    ReminderType.WATER_CHANGE -> "Cambio de agua"
     ReminderType.CUSTOM -> "Otro"
 }
 

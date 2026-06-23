@@ -3,9 +3,11 @@ package com.verdy.data.transfer
 import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.MaintenanceLog
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.PlantEnvironment
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.ReminderFrequency
 import com.verdy.domain.model.enums.MaintenanceAction
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.ReminderType
 import com.verdy.domain.model.enums.SunExposure
@@ -17,7 +19,12 @@ import java.time.LocalDate
 
 private val json = Json { prettyPrint = false; ignoreUnknownKeys = true }
 
-// ── Serializable DTOs ─────────────────────────────────────────────────────────
+@Serializable
+data class PlantEnvironmentDto(
+    val id: Long,
+    val name: String,
+    val sortOrder: Int = 0
+)
 
 @Serializable
 data class PlantDto(
@@ -28,13 +35,16 @@ data class PlantDto(
     val photoFileName: String? = null,
     val acquisitionDate: Long? = null,
     val location: String? = null,
+    val environmentId: Long? = null,
     val notes: String? = null,
     val status: String,
     val wateringFrequencyDays: Int,
     val fertilizingFrequencyDays: Int? = null,
     val fertilizerType: String? = null,
     val waterAmountMl: Int? = null,
-    val sunExposure: String
+    val sunExposure: String,
+    val medium: String = "SOIL",
+    val waterChangeFrequencyDays: Int? = null
 )
 
 @Serializable
@@ -61,16 +71,18 @@ data class MaintenanceLogDto(
 
 @Serializable
 data class GardenDto(
-    val version: Int = 1,
+    val version: Int = 2,
+    val environments: List<PlantEnvironmentDto> = emptyList(),
     val plants: List<PlantDto>,
     val reminders: List<ReminderDto>,
     val maintenanceLogs: List<MaintenanceLogDto>
 )
 
-// ── Conversion functions ──────────────────────────────────────────────────────
-
 fun GardenExportData.toDto(photoFileNames: Map<Long, String> = emptyMap()): GardenDto {
     return GardenDto(
+        environments = environments.map { env ->
+            PlantEnvironmentDto(id = env.id, name = env.name, sortOrder = env.sortOrder)
+        },
         plants = plants.map { plant ->
             PlantDto(
                 id = plant.id,
@@ -79,14 +91,16 @@ fun GardenExportData.toDto(photoFileNames: Map<Long, String> = emptyMap()): Gard
                 scientificName = plant.scientificName,
                 photoFileName = photoFileNames[plant.id],
                 acquisitionDate = plant.acquisitionDate?.toEpochDay(),
-                location = plant.location,
+                environmentId = plant.environmentId,
                 notes = plant.notes,
                 status = plant.status.name,
                 wateringFrequencyDays = plant.careInfo.wateringFrequencyDays,
                 fertilizingFrequencyDays = plant.careInfo.fertilizingFrequencyDays,
                 fertilizerType = plant.careInfo.fertilizerType,
                 waterAmountMl = plant.careInfo.waterAmountMl,
-                sunExposure = plant.careInfo.sunExposure.name
+                sunExposure = plant.careInfo.sunExposure.name,
+                medium = plant.careInfo.medium.name,
+                waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays
             )
         },
         reminders = reminders.map { r ->
@@ -116,16 +130,26 @@ fun GardenExportData.toDto(photoFileNames: Map<Long, String> = emptyMap()): Gard
 }
 
 fun GardenDto.toDomain(): GardenExportData {
+    val environments = environments.map { dto ->
+        PlantEnvironment(id = dto.id, name = dto.name, sortOrder = dto.sortOrder)
+    }
+    val environmentNameToId = environments.associateBy { it.name.lowercase() }
+
     return GardenExportData(
+        environments = environments,
         plants = plants.map { dto ->
+            val resolvedEnvironmentId = dto.environmentId
+                ?: dto.location?.trim()?.lowercase()?.let { loc ->
+                    environmentNameToId[loc]?.id
+                }
             Plant(
                 id = dto.id,
                 customName = dto.customName,
                 commonName = dto.commonName,
                 scientificName = dto.scientificName,
-                photoUri = null, // photo URIs are local, can't restore
+                photoUri = null,
                 acquisitionDate = dto.acquisitionDate?.let { LocalDate.ofEpochDay(it) },
-                location = dto.location,
+                environmentId = resolvedEnvironmentId,
                 notes = dto.notes,
                 status = runCatching { PlantStatus.valueOf(dto.status) }.getOrDefault(PlantStatus.HEALTHY),
                 careInfo = CareInfo(
@@ -133,7 +157,9 @@ fun GardenDto.toDomain(): GardenExportData {
                     fertilizingFrequencyDays = dto.fertilizingFrequencyDays,
                     fertilizerType = dto.fertilizerType,
                     waterAmountMl = dto.waterAmountMl,
-                    sunExposure = runCatching { SunExposure.valueOf(dto.sunExposure) }.getOrDefault(SunExposure.SEMI_SHADE)
+                    sunExposure = runCatching { SunExposure.valueOf(dto.sunExposure) }.getOrDefault(SunExposure.SEMI_SHADE),
+                    medium = runCatching { PlantMedium.valueOf(dto.medium) }.getOrDefault(PlantMedium.SOIL),
+                    waterChangeFrequencyDays = dto.waterChangeFrequencyDays
                 )
             )
         },

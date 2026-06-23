@@ -35,6 +35,9 @@ fun VerdyNavGraph(
                 },
                 onAddReminder = { plantId ->
                     navController.navigate(Screen.ReminderManager.createRoute(plantId))
+                },
+                onAddPlantFromIdentification = {
+                    navController.navigate(Screen.PlantForm.createRoute())
                 }
             )
         }

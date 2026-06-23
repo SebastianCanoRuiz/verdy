@@ -2,14 +2,21 @@ package com.verdy.presentation.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.net.Uri
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.PlantIdentificationResult
 import com.verdy.domain.model.Reminder
 import com.verdy.domain.model.enums.MaintenanceAction
 import com.verdy.domain.repository.PlantRepository
+import com.verdy.domain.usecase.ai.IdentifyPlantUseCase
 import com.verdy.domain.usecase.maintenance.RegisterMaintenanceUseCase
 import com.verdy.domain.usecase.reminder.GetTodayRemindersUseCase
 import com.verdy.domain.usecase.reminder.GetUpcomingRemindersUseCase
 import com.verdy.domain.usecase.reminder.UpdateReminderUseCase
+import com.verdy.domain.util.MoonPhase
+import com.verdy.domain.util.MoonPhaseCalculator
+import java.io.File
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +35,9 @@ data class DashboardUiState(
     val upcomingItems: List<PlantReminderItem> = emptyList(),
     val allPlants: List<Plant> = emptyList(),
     val totalPlants: Int = 0,
+    val moonPhase: MoonPhase = MoonPhaseCalculator.currentPhase(),
+    val isIdentifying: Boolean = false,
+    val identificationResult: PlantIdentificationResult? = null,
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -38,7 +48,8 @@ class DashboardViewModel @Inject constructor(
     private val getTodayReminders: GetTodayRemindersUseCase,
     private val getUpcomingReminders: GetUpcomingRemindersUseCase,
     private val registerMaintenance: RegisterMaintenanceUseCase,
-    private val updateReminder: UpdateReminderUseCase
+    private val updateReminder: UpdateReminderUseCase,
+    private val identifyPlantUseCase: IdentifyPlantUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -101,6 +112,38 @@ class DashboardViewModel @Inject constructor(
             refresh()
         }
     }
+
+    fun identifyPlant(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isIdentifying = true, identificationResult = null) }
+            val imagePath = copyUriToTemp(context, uri) ?: run {
+                _uiState.update { it.copy(isIdentifying = false, error = "No se pudo leer la imagen") }
+                return@launch
+            }
+            identifyPlantUseCase(imagePath).fold(
+                onSuccess = { result ->
+                    _uiState.update { it.copy(isIdentifying = false, identificationResult = result) }
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(isIdentifying = false, error = "Error al identificar: ${e.message}") }
+                }
+            )
+            File(imagePath).delete()
+        }
+    }
+
+    fun clearIdentificationResult() {
+        _uiState.update { it.copy(identificationResult = null) }
+    }
+
+    private fun copyUriToTemp(context: Context, uri: Uri): String? =
+        runCatching {
+            val tmp = File(context.cacheDir, "identify_${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(uri)?.use { inp ->
+                tmp.outputStream().use { out -> inp.copyTo(out) }
+            }
+            tmp.absolutePath
+        }.getOrNull()
 
     fun refresh() {
         viewModelScope.launch {

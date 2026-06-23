@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.MoveDown
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Opacity
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -106,6 +107,7 @@ private fun ReminderType.displayName(): String = when (this) {
     ReminderType.FERTILIZING -> stringResource(R.string.reminder_fertilizing)
     ReminderType.REPOTTING -> stringResource(R.string.reminder_repotting)
     ReminderType.PRUNING -> stringResource(R.string.reminder_pruning)
+    ReminderType.WATER_CHANGE -> stringResource(R.string.reminder_water_change)
     ReminderType.CUSTOM -> stringResource(R.string.reminder_custom)
 }
 
@@ -114,5 +116,6 @@ private fun ReminderType.icon(): ImageVector = when (this) {
     ReminderType.FERTILIZING -> Icons.Outlined.Eco
     ReminderType.REPOTTING -> Icons.Outlined.MoveDown
     ReminderType.PRUNING -> Icons.Outlined.ContentCut
+    ReminderType.WATER_CHANGE -> Icons.Outlined.Opacity
     ReminderType.CUSTOM -> Icons.Outlined.Notifications
 }

@@ -1,5 +1,6 @@
 package com.verdy.domain.model
 
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.SunExposure
 
 /**
@@ -11,5 +12,7 @@ data class CareInfo(
     val fertilizingFrequencyDays: Int? = null,
     val fertilizerType: String? = null,
     val waterAmountMl: Int? = null,
-    val sunExposure: SunExposure = SunExposure.SEMI_SHADE
+    val sunExposure: SunExposure = SunExposure.SEMI_SHADE,
+    val medium: PlantMedium = PlantMedium.SOIL,
+    val waterChangeFrequencyDays: Int? = null
 )

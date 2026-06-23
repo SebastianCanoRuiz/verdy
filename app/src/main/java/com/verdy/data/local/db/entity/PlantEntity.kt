@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.verdy.domain.model.CareInfo
 import com.verdy.domain.model.Plant
+import com.verdy.domain.model.enums.PlantMedium
 import com.verdy.domain.model.enums.PlantStatus
 import com.verdy.domain.model.enums.SunExposure
 import java.time.LocalDate
@@ -20,6 +21,7 @@ data class PlantEntity(
     @ColumnInfo(name = "photo_uri") val photoUri: String?,
     @ColumnInfo(name = "acquisition_date") val acquisitionDate: LocalDate?,
     @ColumnInfo(name = "location") val location: String?,
+    @ColumnInfo(name = "environment_id") val environmentId: Long? = null,
     @ColumnInfo(name = "notes") val notes: String?,
     @ColumnInfo(name = "status") val status: PlantStatus,
 
@@ -28,7 +30,12 @@ data class PlantEntity(
     @ColumnInfo(name = "fertilizing_frequency_days") val fertilizingFrequencyDays: Int?,
     @ColumnInfo(name = "fertilizer_type") val fertilizerType: String?,
     @ColumnInfo(name = "water_amount_ml") val waterAmountMl: Int?,
-    @ColumnInfo(name = "sun_exposure") val sunExposure: SunExposure
+    @ColumnInfo(name = "sun_exposure") val sunExposure: SunExposure,
+
+    // Added in version 2
+    @ColumnInfo(name = "medium") val medium: PlantMedium = PlantMedium.SOIL,
+    @ColumnInfo(name = "water_change_frequency_days") val waterChangeFrequencyDays: Int? = null,
+    @ColumnInfo(name = "ai_curiosities") val aiCuriosities: String? = null
 ) {
     fun toDomain(): Plant = Plant(
         id = id,
@@ -37,7 +44,7 @@ data class PlantEntity(
         scientificName = scientificName,
         photoUri = photoUri,
         acquisitionDate = acquisitionDate,
-        location = location,
+        environmentId = environmentId,
         notes = notes,
         status = status,
         careInfo = CareInfo(
@@ -45,8 +52,11 @@ data class PlantEntity(
             fertilizingFrequencyDays = fertilizingFrequencyDays,
             fertilizerType = fertilizerType,
             waterAmountMl = waterAmountMl,
-            sunExposure = sunExposure
-        )
+            sunExposure = sunExposure,
+            medium = medium,
+            waterChangeFrequencyDays = waterChangeFrequencyDays
+        ),
+        aiCuriosities = aiCuriosities
     )
 
     companion object {
@@ -57,14 +67,18 @@ data class PlantEntity(
             scientificName = plant.scientificName,
             photoUri = plant.photoUri,
             acquisitionDate = plant.acquisitionDate,
-            location = plant.location,
+            location = null,
+            environmentId = plant.environmentId,
             notes = plant.notes,
             status = plant.status,
             wateringFrequencyDays = plant.careInfo.wateringFrequencyDays,
             fertilizingFrequencyDays = plant.careInfo.fertilizingFrequencyDays,
             fertilizerType = plant.careInfo.fertilizerType,
             waterAmountMl = plant.careInfo.waterAmountMl,
-            sunExposure = plant.careInfo.sunExposure
+            sunExposure = plant.careInfo.sunExposure,
+            medium = plant.careInfo.medium,
+            waterChangeFrequencyDays = plant.careInfo.waterChangeFrequencyDays,
+            aiCuriosities = plant.aiCuriosities
         )
     }
 }

@@ -99,6 +99,27 @@ class GardenFileManager @Inject constructor(
         backupFile
     }
 
+    /** Returns all backup ZIP files sorted by most recent first */
+    fun listBackups(): List<File> =
+        backupDir.listFiles { f -> f.name.endsWith(".zip") }
+            ?.sortedByDescending { it.lastModified() } ?: emptyList()
+
+    /** Reads a backup ZIP from internal storage and parses the garden.json inside */
+    fun importFromBackupFile(file: File): Result<GardenExportData> = runCatching {
+        var gardenData: GardenExportData? = null
+        ZipInputStream(file.inputStream()).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name == "garden.json") {
+                    val json = zis.readBytes().toString(Charsets.UTF_8)
+                    gardenData = gardenDtoFromJson(json).toDomain()
+                }
+                entry = zis.nextEntry
+            }
+        }
+        gardenData ?: error("Backup inválido: falta garden.json")
+    }
+
     /** Generates a QR code bitmap from a text payload */
     fun generateQRBitmap(payload: String, size: Int = 512): Result<Bitmap> = runCatching {
         val writer = QRCodeWriter()

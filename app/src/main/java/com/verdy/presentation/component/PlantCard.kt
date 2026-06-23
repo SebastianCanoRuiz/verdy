@@ -39,7 +39,8 @@ fun PlantCard(
     plant: Plant,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    todayReminder: Reminder? = null
+    todayReminder: Reminder? = null,
+    environmentName: String? = null
 ) {
     Card(
         modifier = modifier
@@ -135,10 +136,10 @@ fun PlantCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                plant.location?.let { loc ->
+                environmentName?.let { name ->
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = loc,
+                        text = "📍 $name",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1,

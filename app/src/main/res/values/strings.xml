@@ -32,6 +32,7 @@
     <string name="reminder_fertilizing">Abono</string>
     <string name="reminder_repotting">Trasplante</string>
     <string name="reminder_pruning">Poda</string>
+    <string name="reminder_water_change">Cambio de agua</string>
     <string name="reminder_custom">Otro cuidado</string>
 
     <!-- Reminder frequency -->
@@ -126,6 +127,80 @@
     <string name="settings_import_success">Datos importados correctamente</string>
     <string name="settings_import_error">Error al importar los datos</string>
     <string name="settings_qr_too_large">Demasiados datos para un QR.\nUsa la exportación ZIP.</string>
+
+    <!-- Plant medium -->
+    <string name="plant_medium_soil">Tierra</string>
+    <string name="plant_medium_water">Agua</string>
+    <string name="plant_water_change_frequency">Cambio de agua cada (días)</string>
+
+    <!-- AI features -->
+    <string name="ai_identify_button">Identificar con IA</string>
+    <string name="ai_identifying">Identificando...</string>
+    <string name="ai_curiosities_title">Curiosidades</string>
+    <string name="ai_loading_curiosities">Consultando IA...</string>
+    <string name="ai_no_key">Configura tu API key de OpenAI para ver curiosidades.</string>
+    <string name="ai_identification_result">Resultado de identificación</string>
+    <string name="ai_save_as_plant">Guardar como nueva planta</string>
+    <string name="ai_confidence_high">Alta confianza</string>
+    <string name="ai_confidence_medium">Confianza media</string>
+    <string name="ai_confidence_low">Baja confianza</string>
+    <string name="ai_about_plant">Sobre la planta</string>
+    <string name="ai_alternatives">Posibles identificaciones</string>
+    <string name="ai_suggestions">Sugerencias</string>
+    <string name="ai_has_flowers">Con flores</string>
+    <string name="ai_no_flowers">Sin flores visibles</string>
+    <string name="ai_fertilizing_every">Abono cada %d d</string>
+    <string name="ai_care_summary">Resumen de cuidados</string>
+
+    <!-- Plant form sections -->
+    <string name="form_section_photo">Foto e identificación</string>
+    <string name="form_section_basic">Información básica</string>
+    <string name="form_section_medium_light">Medio y luz</string>
+    <string name="form_section_care">Cuidados</string>
+    <string name="form_section_reminders">Recordatorios</string>
+    <string name="form_section_notes">Notas personales</string>
+    <string name="form_photo_hint">Toca para agregar foto</string>
+    <string name="form_watering_section">Riego</string>
+    <string name="form_fertilizing_section">Abono</string>
+    <string name="form_water_change_section">Cambio de agua</string>
+
+    <!-- Health evaluation -->
+    <string name="health_eval_title">Evaluar estado</string>
+    <string name="health_eval_button">Evaluar con foto</string>
+    <string name="health_eval_tips_title">Consejos para la foto</string>
+    <string name="health_eval_tip_light">Usa luz natural, evita flash directo</string>
+    <string name="health_eval_tip_focus">Enfoca hojas y tallo, una sola planta en cuadro</string>
+    <string name="health_eval_tip_angle">Toma la foto de frente y otra desde arriba si es posible</string>
+    <string name="health_eval_tip_background">Evita fondos muy oscuros o desenfocados</string>
+    <string name="health_eval_loading">Analizando estado de la planta…</string>
+    <string name="health_eval_observations">Observaciones</string>
+    <string name="health_eval_issues">Posibles problemas</string>
+    <string name="health_eval_actions">Qué puedes hacer</string>
+    <string name="health_eval_photo_tips">Cómo mejorar la foto</string>
+    <string name="health_eval_status_updated">Estado actualizado</string>
+    <string name="health_eval_confirm_low_confidence">La confianza de la evaluación es baja. ¿Deseas actualizar el estado de la planta igualmente?</string>
+    <string name="health_eval_apply_status">Actualizar estado</string>
+    <string name="health_eval_keep_status">Mantener estado actual</string>
+    <string name="health_eval_suggested_status">Estado sugerido</string>
+    <string name="history_health_evaluation">Evaluación de estado</string>
+
+    <!-- Environments -->
+    <string name="environment_title">Ambiente</string>
+    <string name="environment_select">Selecciona un ambiente</string>
+    <string name="environment_create">Nuevo ambiente</string>
+    <string name="environment_create_hint">Nombre del ambiente</string>
+    <string name="environment_manage">Gestionar ambientes</string>
+    <string name="environment_unassigned">Sin ambiente</string>
+    <string name="environment_plant_count">%d plantas</string>
+    <string name="environment_plant_count_one">1 planta</string>
+    <string name="environment_delete_confirm">¿Eliminar el ambiente \"%s\"? Las plantas quedarán sin ambiente asignado.</string>
+    <string name="environment_name_exists">Ya existe un ambiente con ese nombre</string>
+    <string name="environment_rename">Renombrar</string>
+    <string name="environment_delete">Eliminar ambiente</string>
+
+    <!-- Moon phase -->
+    <string name="moon_phase_title">Fase lunar</string>
+    <string name="moon_gardening_tip">Consejo del jardín</string>
 
     <!-- Common -->
     <string name="confirm">Confirmar</string>

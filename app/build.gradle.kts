@@ -7,6 +7,21 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+fun getLocalProperty(key: String): String {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return ""
+    return file.readLines()
+        .firstOrNull { it.startsWith("$key=") }
+        ?.substringAfter("=")
+        ?.trim() ?: ""
+}
+
+/** XOR-encodes a string so it never appears as plaintext in the compiled APK. */
+fun obfuscateKey(value: String): String {
+    val seed = 63 // 0x3F
+    return value.map { c -> (c.code xor seed).toString() }.joinToString(",")
+}
+
 android {
     namespace = "com.verdy"
     compileSdk = 34
@@ -19,6 +34,12 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "OAK_ENC",
+            "\"${obfuscateKey(getLocalProperty("OPENAI_API_KEY"))}\""
+        )
     }
 
     buildTypes {
@@ -108,6 +129,9 @@ dependencies {
     // ZXing (QR generation and scanning)
     implementation(libs.zxing.core)
     implementation(libs.zxing.android.embedded)
+
+    // OkHttp (OpenAI API calls)
+    implementation(libs.okhttp)
 
     // Unit Tests
     testImplementation(libs.junit)

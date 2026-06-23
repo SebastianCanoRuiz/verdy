@@ -22,7 +22,6 @@ class GenerateQRUseCase @Inject constructor() {
                 append("\"n\":\"${p.customName.sanitize()}\",")
                 append("\"c\":\"${p.commonName.sanitize()}\",")
                 p.scientificName?.let { append("\"s\":\"${it.sanitize()}\",") }
-                p.location?.let { append("\"l\":\"${it.sanitize()}\",") }
                 append("\"st\":\"${p.status.name}\",")
                 append("\"wf\":${p.careInfo.wateringFrequencyDays},")
                 append("\"se\":\"${p.careInfo.sunExposure.name}\"")

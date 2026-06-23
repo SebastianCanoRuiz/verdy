@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.verdy.data.local.db.VerdyDatabase
 import com.verdy.data.local.db.dao.MaintenanceLogDao
 import com.verdy.data.local.db.dao.PlantDao
+import com.verdy.data.local.db.dao.PlantEnvironmentDao
 import com.verdy.data.local.db.dao.ReminderDao
 import dagger.Module
 import dagger.Provides
@@ -25,6 +26,7 @@ object DatabaseModule {
             VerdyDatabase::class.java,
             VerdyDatabase.DATABASE_NAME
         )
+            .addMigrations(*VerdyDatabase.MIGRATIONS)
             .fallbackToDestructiveMigration()
             .build()
 
@@ -33,6 +35,9 @@ object DatabaseModule {
 
     @Provides
     fun provideReminderDao(db: VerdyDatabase): ReminderDao = db.reminderDao()
+
+    @Provides
+    fun providePlantEnvironmentDao(db: VerdyDatabase): PlantEnvironmentDao = db.plantEnvironmentDao()
 
     @Provides
     fun provideMaintenanceLogDao(db: VerdyDatabase): MaintenanceLogDao = db.maintenanceLogDao()
